@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import dotenv from 'dotenv';
+import './mqtt';
+import { prisma } from './db';
 
 dotenv.config();
 
@@ -24,6 +26,17 @@ app.get('/', async () => {
     version: '0.1.0',
     description: 'Climate-health telemetry backend for ISIR Ghana',
   };
+});
+
+app.get('/api/readings', async () => {
+  const readings = await prisma.climateReading.findMany({
+    orderBy: {
+      createdAt: 'desc',
+    },
+    take: 100,
+  });
+
+  return readings;
 });
 
 const start = async () => {
