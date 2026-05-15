@@ -1,0 +1,26 @@
+{
+  "name": "climasense-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.0",
+    "@prisma/client": "^5.14.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "mqtt": "^5.7.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "prisma": "^5.14.0",
+    "tsx": "^4.15.7",
+    "typescript": "^5.4.5",
+    "@types/node": "^20.14.2"
+  }
+}
