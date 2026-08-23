@@ -1,16 +1,34 @@
 import mqtt from 'mqtt';
+import { config } from './config';
 import { prisma } from './db';
 import { climateReadingSchema } from './validation';
 
-const brokerUrl = process.env.MQTT_BROKER || 'mqtt://broker.hivemq.com:1883';
-const topic = process.env.MQTT_TOPIC || 'climasense/ghana/northern/readings';
+const { broker, topic, username, password, allowInsecure } = config.mqtt;
 
-const client = mqtt.connect(brokerUrl);
+if (!broker || !topic) {
+  console.warn('MQTT ingestion disabled: MQTT_BROKER and MQTT_TOPIC are not configured');
+}
 
-client.on('connect', () => {
+if ((username && !password) || (!username && password)) {
+  throw new Error('MQTT_USERNAME and MQTT_PASSWORD must be configured together');
+}
+
+if (broker && new URL(broker).protocol !== 'mqtts:' && !allowInsecure) {
+  throw new Error('Insecure MQTT requires the explicit MQTT_ALLOW_INSECURE=true opt-in');
+}
+
+const client = broker && topic
+  ? mqtt.connect(broker, {
+      username,
+      password,
+      rejectUnauthorized: true,
+    })
+  : null;
+
+client?.on('connect', () => {
   console.log('Connected to MQTT broker');
 
-  client.subscribe(topic, (error) => {
+  client.subscribe(topic!, (error) => {
     if (error) {
       console.error('MQTT subscribe error', error);
     } else {
@@ -19,7 +37,7 @@ client.on('connect', () => {
   });
 });
 
-client.on('message', async (_topic, payload) => {
+client?.on('message', async (_topic, payload) => {
   try {
     const parsed = JSON.parse(payload.toString());
 
