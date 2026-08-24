@@ -19,7 +19,6 @@ type GMetFeature = {
     name?: string;
     reportId?: string;
     reportTime?: string;
-    units?: string;
     value?: number;
     wigos_station_identifier?: string;
   };
@@ -51,7 +50,8 @@ type CacheEntry = {
 let cache: CacheEntry | null = null;
 
 function stationCode(wigosIdentifier: string) {
-  return wigosIdentifier.split('-').at(-1) ?? wigosIdentifier;
+  const parts = wigosIdentifier.split('-');
+  return parts[parts.length - 1] || wigosIdentifier;
 }
 
 function freshnessFor(observedAt: string, now = Date.now()): GMetObservation['freshness'] {
@@ -62,10 +62,7 @@ function freshnessFor(observedAt: string, now = Date.now()): GMetObservation['fr
   return 'stale';
 }
 
-function measurement(
-  features: GMetFeature[],
-  name: string,
-): number | null {
+function measurement(features: GMetFeature[], name: string): number | null {
   const value = features.find((feature) => feature.properties?.name === name)
     ?.properties?.value;
 
