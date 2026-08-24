@@ -1,18 +1,36 @@
+import { timingSafeEqual } from 'node:crypto';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import dotenv from 'dotenv';
+import { config, validateProductionConfig } from './config';
 import './mqtt';
 import { prisma } from './db';
 import { fetchGMetObservations, gmetSource } from './gmet';
 
-dotenv.config();
-
 const app = Fastify({ logger: true });
+
+const keysMatch = (provided: string, expected: string): boolean => {
+  const providedBuffer = Buffer.from(provided);
+  const expectedBuffer = Buffer.from(expected);
+
+  return (
+    providedBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(providedBuffer, expectedBuffer)
+  );
+};
 
 const start = async () => {
   try {
+    validateProductionConfig();
+
     await app.register(cors, {
-      origin: true,
+      origin: (origin, callback) => {
+        if (!origin || (!config.isProduction && config.corsOrigins.length === 0)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(null, config.corsOrigins.includes(origin));
+      },
     });
 
     app.get('/health', async () => {
@@ -31,7 +49,22 @@ const start = async () => {
       };
     });
 
-    app.get('/api/readings', async () => {
+    app.get('/api/readings', {
+      preHandler: async (request, reply) => {
+        if (!config.apiKey && !config.isProduction) {
+          return;
+        }
+
+        const authorization = request.headers.authorization;
+        const providedKey = authorization?.startsWith('Bearer ')
+          ? authorization.slice('Bearer '.length)
+          : '';
+
+        if (!config.apiKey || !providedKey || !keysMatch(providedKey, config.apiKey)) {
+          return reply.code(401).send({ error: 'Unauthorized' });
+        }
+      },
+    }, async () => {
       const readings = await prisma.climateReading.findMany({
         orderBy: {
           createdAt: 'desc',
@@ -64,7 +97,7 @@ const start = async () => {
     });
 
     await app.listen({
-      port: Number(process.env.PORT || 3000),
+      port: config.port,
       host: '0.0.0.0',
     });
   } catch (error) {
