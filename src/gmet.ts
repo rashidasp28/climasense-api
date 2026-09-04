@@ -14,7 +14,7 @@ const NORTHERN_STATIONS: Record<string, string> = {
   '65420': 'Yendi',
 };
 
-type GMetFeature = {
+export type GMetFeature = {
   properties?: {
     name?: string;
     reportId?: string;
@@ -69,7 +69,10 @@ function measurement(features: GMetFeature[], name: string): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function normalize(features: GMetFeature[]): GMetObservation[] {
+export function normalizeGMetFeatures(
+  features: GMetFeature[],
+  now = Date.now(),
+): GMetObservation[] {
   const reports = new Map<string, GMetFeature[]>();
 
   for (const feature of features) {
@@ -102,7 +105,7 @@ function normalize(features: GMetFeature[]): GMetObservation[] {
       pressureHpa: measurement(report, 'non_coordinate_pressure'),
       windSpeedMs: measurement(report, 'wind_speed'),
       windDirectionDegrees: measurement(report, 'wind_direction'),
-      freshness: freshnessFor(properties.reportTime),
+      freshness: freshnessFor(properties.reportTime, now),
     };
 
     const previous = latestByStation.get(code);
@@ -133,7 +136,7 @@ export async function fetchGMetObservations(): Promise<GMetObservation[]> {
     }
 
     const payload = (await response.json()) as GMetFeatureCollection;
-    const observations = normalize(payload.features ?? []);
+    const observations = normalizeGMetFeatures(payload.features ?? []);
 
     cache = {
       expiresAt: Date.now() + CACHE_TTL_MS,
