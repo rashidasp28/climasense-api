@@ -9,9 +9,9 @@ This service receives MQTT telemetry from ClimaSense ESP32 sensor nodes, validat
 - MQTT telemetry ingestion
 - Climate reading validation
 - PostgreSQL data storage with Prisma
-- REST API for readings, devices, schools, and communities
+- REST endpoints for recent readings and official GMet observations
 - Health checks and deployment readiness
-- OpenAPI-ready backend architecture
+- Production configuration validation
 
 ## Stack
 
@@ -26,6 +26,25 @@ This service receives MQTT telemetry from ClimaSense ESP32 sensor nodes, validat
 ## Data Flow
 
 ClimaSense Firmware -> MQTT Broker -> ClimaSense API -> PostgreSQL -> Dashboard and Alert Engine
+
+## Current HTTP endpoints
+
+| Method and path | Access | Current behavior |
+| --- | --- | --- |
+| `GET /` | Public | Returns the service name, version, and description. |
+| `GET /health` | Public | Returns service status and the server timestamp. |
+| `GET /api/readings` | Bearer-protected in production and whenever `API_KEY` is configured | Returns up to 100 stored ClimaSense readings, newest first. |
+| `GET /api/official-observations` | Public | Returns the latest available GMet observations for supported Northern Ghana stations. |
+
+The official-observations response contains source metadata, the server fetch time, and normalized station observations. Each observation is classified as:
+
+- `current` when it is no more than 6 hours old;
+- `delayed` when it is more than 6 but no more than 48 hours old; or
+- `stale` when it is more than 48 hours old.
+
+GMet station observations are regional reference data, not measurements from a ClimaSense sensor node. Consumers must inspect `observedAt` and `freshness` before display or analysis. If the upstream GMet request fails, the endpoint returns HTTP `502` with a controlled error response.
+
+Device, school, and community management endpoints are planned but are not implemented in the current MVP.
 
 ## Local Development
 
