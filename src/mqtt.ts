@@ -1,6 +1,7 @@
 import mqtt from 'mqtt';
 import { config } from './config';
 import { prisma } from './db';
+import { toClimateReadingData } from './telemetry';
 import { climateReadingSchema } from './validation';
 
 const { broker, topic, username, password, allowInsecure } = config.mqtt;
@@ -44,26 +45,7 @@ client?.on('message', async (_topic, payload) => {
     const validated = climateReadingSchema.parse(parsed);
 
     const stored = await prisma.climateReading.create({
-      data: {
-        deviceId: validated.device_id,
-        schoolId: validated.school_id,
-        community: validated.community,
-
-        temperatureC: validated.temperature_c,
-        humidityPercent: validated.humidity_percent,
-        heatIndexC: validated.heat_index_c,
-
-        pm25: validated.pm25_ugm3,
-        pm10: validated.pm10_ugm3,
-
-        soilMoisturePercent: validated.soil_moisture_percent,
-        rainfallMm: validated.rainfall_mm,
-
-        batteryVoltage: validated.battery_voltage,
-        wifiRssi: validated.wifi_rssi,
-
-        dhtHealthy: validated.dht_healthy,
-      },
+      data: toClimateReadingData(validated),
     });
 
     console.log('Stored climate reading:', stored.id);
