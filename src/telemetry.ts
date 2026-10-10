@@ -1,4 +1,4 @@
-import type { ClimateReadingPayload } from './validation';
+import { climateReadingSchema, type ClimateReadingPayload } from './validation';
 
 export const toClimateReadingData = (reading: ClimateReadingPayload) => ({
   deviceId: reading.device_id,
@@ -20,3 +20,11 @@ export const toClimateReadingData = (reading: ClimateReadingPayload) => ({
 
   dhtHealthy: reading.dht_healthy,
 });
+
+export const parseClimateReadingMessage = (payload: Buffer | string) => {
+  const message = typeof payload === 'string' ? payload : payload.toString('utf8');
+  const parsed: unknown = JSON.parse(message);
+  const validated = climateReadingSchema.parse(parsed);
+
+  return toClimateReadingData(validated);
+};
