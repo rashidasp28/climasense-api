@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { toClimateReadingData } from '../src/telemetry';
+import { parseClimateReadingMessage, toClimateReadingData } from '../src/telemetry';
 import { climateReadingSchema } from '../src/validation';
 
 test('maps every firmware telemetry field to its database column', () => {
@@ -56,4 +56,40 @@ test('preserves absent optional measurements as undefined', () => {
     wifiRssi: undefined,
     dhtHealthy: undefined,
   });
+});
+
+test('parses a simulated MQTT buffer through validation and persistence mapping', () => {
+  const payload = Buffer.from(JSON.stringify({
+    device_id: 'simulator-001',
+    school_id: 'school-demo',
+    temperature_c: 31.4,
+    rainfall_mm: 0,
+    dht_healthy: true,
+  }));
+
+  assert.deepEqual(parseClimateReadingMessage(payload), {
+    deviceId: 'simulator-001',
+    schoolId: 'school-demo',
+    community: undefined,
+    temperatureC: 31.4,
+    humidityPercent: undefined,
+    heatIndexC: undefined,
+    pm25: undefined,
+    pm10: undefined,
+    soilMoisturePercent: undefined,
+    rainfallMm: 0,
+    batteryVoltage: undefined,
+    wifiRssi: undefined,
+    dhtHealthy: true,
+  });
+});
+
+test('rejects malformed MQTT JSON before persistence', () => {
+  assert.throws(() => parseClimateReadingMessage(Buffer.from('{not-json')));
+});
+
+test('rejects MQTT JSON that violates the telemetry contract', () => {
+  assert.throws(() => parseClimateReadingMessage(JSON.stringify({
+    temperature_c: 28.5,
+  })));
 });
